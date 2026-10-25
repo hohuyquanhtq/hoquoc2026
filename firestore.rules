@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    // Teacher / User profile
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email is string
+        && request.resource.data.displayName is string
+        && request.resource.data.role in ['teacher', 'admin'];
+      allow update: if isOwner(userId)
+        && request.resource.data.uid == existing().uid
+        && request.resource.data.role == existing().role;
+      allow delete: if false;
+    }
+
+    // Quizzes created by teachers
+    match /quizzes/{quizId} {
+      function getQuizOwner() {
+        return resource.data.ownerUid;
+      }
+
+      // Allow get/list for published quizzes or for the teacher who owns them
+      allow get: if resource.data.status == 'published' || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+      allow list: if resource.data.status == 'published' || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+      
+      allow create: if isSignedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && isValidId(quizId);
+      
+      allow update: if isSignedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+      
+      allow delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+
+      // Questions subcollection
+      match /questions/{questionId} {
+        function getParentQuiz() {
+          return get(/databases/$(database)/documents/quizzes/$(quizId)).data;
+        }
+
+        // Allow read for published quizzes (used by backend access/grading) or by teacher owner
+        allow read: if getParentQuiz().status == 'published' || (isSignedIn() && getParentQuiz().ownerUid == request.auth.uid);
+        allow write: if isSignedIn() && getParentQuiz().ownerUid == request.auth.uid;
+      }
+
+      // Attempts subcollection
+      match /attempts/{attemptId} {
+        function getParentQuiz() {
+          return get(/databases/$(database)/documents/quizzes/$(quizId)).data;
+        }
+
+        // Teacher owner can read all attempts; students can read their specific attempt
+        allow read: if (isSignedIn() && getParentQuiz().ownerUid == request.auth.uid) || isValidId(attemptId);
+        // Student can submit an attempt
+        allow create: if isValidId(attemptId)
+          && request.resource.data.studentName is string
+          && request.resource.data.score is number;
+        // Cannot alter once submitted
+        allow update: if false;
+        // Teacher can delete attempt records
+        allow delete: if isSignedIn() && getParentQuiz().ownerUid == request.auth.uid;
+      }
+    }
+  }
+}

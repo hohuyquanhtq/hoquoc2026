@@ -1,0 +1,6 @@
+{
+  "name": "Quiz Pro - Tạo Đề Nhanh & Thi Trực Tuyến",
+  "description": "Ứng dụng tạo đề trắc nghiệm từ Word, quản lý ngân hàng câu hỏi và tổ chức thi trực tuyến bảo mật cho giáo viên và học sinh.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

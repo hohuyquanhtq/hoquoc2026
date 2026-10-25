@@ -1,0 +1,110 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile for registered teachers and administrators",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email", "description": "Teacher email" },
+        "displayName": { "type": "string", "maxLength": 100, "description": "Teacher full name" },
+        "role": { "type": "string", "enum": ["teacher", "admin"], "description": "User system role" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Account last update timestamp" }
+      },
+      "required": ["uid", "email", "displayName", "role", "createdAt"]
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "Quiz metadata, settings, and release configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique quiz document ID" },
+        "publicCode": { "type": "string", "maxLength": 32, "description": "Unique short code for public access" },
+        "title": { "type": "string", "maxLength": 200, "description": "Quiz title" },
+        "subject": { "type": "string", "maxLength": 100, "description": "Subject name" },
+        "grade": { "type": "string", "maxLength": 50, "description": "Grade level" },
+        "durationMinutes": { "type": "number", "description": "Exam duration in minutes" },
+        "maxScore": { "type": "number", "description": "Maximum score, default 10" },
+        "hasPassword": { "type": "boolean", "description": "Whether exam requires password" },
+        "passwordHash": { "type": "string", "maxLength": 128, "description": "Hashed or protected password for student entry" },
+        "shuffleQuestions": { "type": "boolean", "description": "Whether questions should be randomized" },
+        "shuffleOptions": { "type": "boolean", "description": "Whether options should be randomized" },
+        "maxAttempts": { "type": "number", "description": "Number of allowed attempts (1 or multiple)" },
+        "showScoreImmediately": { "type": "boolean", "description": "Whether score is shown after submit" },
+        "revealAnswersMode": { "type": "string", "enum": ["none", "always", "score_threshold"], "description": "Rule to reveal answers" },
+        "minScoreToRevealAnswers": { "type": "number", "description": "Minimum score needed to see correct answers" },
+        "revealExplanationsMode": { "type": "string", "enum": ["none", "always", "score_threshold"], "description": "Rule to reveal explanations" },
+        "minScoreToRevealExplanations": { "type": "number", "description": "Minimum score needed to see explanations" },
+        "allowRetake": { "type": "boolean", "description": "Whether students can retake the quiz" },
+        "status": { "type": "string", "enum": ["draft", "published", "closed"], "description": "Quiz lifecycle status" },
+        "ownerUid": { "type": "string", "description": "Teacher Firebase Auth UID" },
+        "ownerEmail": { "type": "string", "description": "Teacher email" },
+        "questionCount": { "type": "number", "description": "Total number of questions" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["title", "ownerUid", "status", "publicCode", "createdAt"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "Question content, choices, answer key and solution",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Question ID" },
+        "quizId": { "type": "string", "description": "Parent quiz ID" },
+        "order": { "type": "number", "description": "Position in exam" },
+        "type": { "type": "string", "enum": ["single_choice", "multiple_choice", "true_false", "short_answer"], "description": "Question format" },
+        "content": { "type": "string", "maxLength": 10000, "description": "Question text with formatting" },
+        "options": { "type": "array", "description": "List of options A, B, C, D or sub-items" },
+        "correctAnswer": { "type": "string", "description": "Answer key (stored securely, not sent to test taker)" },
+        "explanation": { "type": "string", "maxLength": 5000, "description": "Solution guidance" },
+        "points": { "type": "number", "description": "Points allocated for question" }
+      },
+      "required": ["quizId", "type", "content", "order"]
+    },
+    "Attempt": {
+      "title": "Attempt",
+      "description": "Student quiz submission record and grading result",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique attempt ID" },
+        "quizId": { "type": "string", "description": "Quiz ID" },
+        "studentName": { "type": "string", "maxLength": 100, "description": "Student full name" },
+        "studentClass": { "type": "string", "maxLength": 50, "description": "Student class" },
+        "schoolName": { "type": "string", "maxLength": 100, "description": "Student school name" },
+        "score": { "type": "number", "description": "Achieved score out of maxScore" },
+        "maxScore": { "type": "number", "description": "Total possible score" },
+        "correctCount": { "type": "number", "description": "Number of correct questions" },
+        "incorrectCount": { "type": "number", "description": "Number of wrong questions" },
+        "unansweredCount": { "type": "number", "description": "Number of skipped questions" },
+        "totalQuestions": { "type": "number", "description": "Total question count" },
+        "timeSpentSeconds": { "type": "number", "description": "Duration taken by student" },
+        "answers": { "type": "object", "description": "Map of questionId to student answer" },
+        "canViewAnswers": { "type": "boolean", "description": "Whether backend determined eligibility to view answers" },
+        "canViewExplanations": { "type": "boolean", "description": "Whether backend determined eligibility to view explanations" },
+        "startedAt": { "type": "string", "format": "date-time", "description": "Exam start time" },
+        "submittedAt": { "type": "string", "format": "date-time", "description": "Submission time" }
+      },
+      "required": ["quizId", "studentName", "studentClass", "score", "submittedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles for teachers"
+    },
+    "/quizzes/{quizId}": {
+      "schema": { "$ref": "#/entities/Quiz" },
+      "description": "Quizzes created by teachers"
+    },
+    "/quizzes/{quizId}/questions/{questionId}": {
+      "schema": { "$ref": "#/entities/Question" },
+      "description": "Questions belonging to a quiz"
+    },
+    "/quizzes/{quizId}/attempts/{attemptId}": {
+      "schema": { "$ref": "#/entities/Attempt" },
+      "description": "Student attempts and grading results"
+    }
+  }
+}
